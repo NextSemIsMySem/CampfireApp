@@ -43,10 +43,7 @@ class GroupRepositoryImpl @Inject constructor(
 
     override suspend fun deleteGroup(groupId: String): Result<Unit> {
         return try {
-            // Delete the group document
             groupsCollection.document(groupId).delete().await()
-            
-            // Also delete all messages in this group
             val messagesQuery = firestore.collection("messages")
                 .whereEqualTo("groupId", groupId)
                 .get()
@@ -86,6 +83,20 @@ class GroupRepositoryImpl @Inject constructor(
 
         awaitClose { listener.remove() }
     }
+
+    // START: ADDED FUNCTION
+    override fun getGroupFlow(groupId: String): Flow<Group?> = callbackFlow {
+        val listener = groupsCollection.document(groupId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error) // Close the flow on error
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObject(Group::class.java))
+            }
+        awaitClose { listener.remove() }
+    }
+    // END: ADDED FUNCTION
 
     override suspend fun joinGroup(groupId: String, userId: String): Result<Unit> {
         return try {
