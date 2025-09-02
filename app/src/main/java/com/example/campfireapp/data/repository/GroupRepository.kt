@@ -12,6 +12,7 @@ interface GroupRepository {
     suspend fun deleteGroup(groupId: String): Result<Unit>
     suspend fun getGroup(groupId: String): Group?
     suspend fun getUserGroups(userId: String): Flow<List<Group>>
+    fun getGroupFlow(groupId: String): Flow<Group?> // <-- ADDED
     suspend fun joinGroup(groupId: String, userId: String): Result<Unit>
     suspend fun leaveGroup(groupId: String, userId: String): Result<Unit>
     suspend fun incrementMessageCount(groupId: String): Result<Unit>
