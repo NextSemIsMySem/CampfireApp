@@ -33,7 +33,6 @@ class GroupViewModel @Inject constructor(
 
     private val _currentUserId = MutableStateFlow<String?>(null)
 
-    // Fix: Use stateIn() for proper lifecycle-aware Flow collection
     @OptIn(ExperimentalCoroutinesApi::class)
     val userGroups: StateFlow<List<Group>> = _currentUserId
         .flatMapLatest { userId ->
@@ -48,11 +47,32 @@ class GroupViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+        
+    // START: MODIFIED SECTION
+    private val _selectedGroupId = MutableStateFlow<String?>(null)
+    private val _createdGroupId = MutableStateFlow<String?>(null)
+    val createdGroupId: StateFlow<String?> = _createdGroupId.asStateFlow()
 
-    private val _selectedGroup = MutableStateFlow<Group?>(null)
-    val selectedGroup: StateFlow<Group?> = _selectedGroup.asStateFlow()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedGroupDetails: StateFlow<Group?> = _selectedGroupId
+        .flatMapLatest { groupId ->
+            if (groupId != null) {
+                groupRepository.getGroupFlow(groupId)
+            } else {
+                emptyFlow()
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
-    // Fix: Replace the problematic loadUserGroups function
+    fun loadGroupById(groupId: String) {
+        _selectedGroupId.value = groupId
+    }
+    // END: MODIFIED SECTION
+
     fun setCurrentUser(userId: String) {
         _currentUserId.value = userId
     }
@@ -66,9 +86,7 @@ class GroupViewModel @Inject constructor(
         inactivityTimeoutMinutes: Long? = null
     ) {
         if (name.isBlank()) {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "Group name is required"
-            )
+            _uiState.value = _uiState.value.copy(errorMessage = "Group name is required")
             return
         }
 
@@ -95,7 +113,7 @@ class GroupViewModel @Inject constructor(
                         isLoading = false,
                         successMessage = "Group created successfully"
                     )
-                    _selectedGroup.value = createdGroup
+                    _createdGroupId.value = createdGroup.id
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -104,6 +122,10 @@ class GroupViewModel @Inject constructor(
                     )
                 }
         }
+    }
+    
+    fun onGroupCreationHandled() {
+        _createdGroupId.value = null
     }
 
     fun updateGroup(group: Group) {
@@ -116,7 +138,6 @@ class GroupViewModel @Inject constructor(
                         isLoading = false,
                         successMessage = "Group updated successfully"
                     )
-                    _selectedGroup.value = group
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -137,7 +158,7 @@ class GroupViewModel @Inject constructor(
                         isLoading = false,
                         successMessage = "Group deleted successfully"
                     )
-                    _selectedGroup.value = null
+                    _selectedGroupId.value = null
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -147,7 +168,8 @@ class GroupViewModel @Inject constructor(
                 }
         }
     }
-
+    
+    // ... rest of the functions (joinGroup, leaveGroup, etc.) remain the same
     fun joinGroup(groupId: String, userId: String) {
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
@@ -185,15 +207,6 @@ class GroupViewModel @Inject constructor(
                         errorMessage = error.message ?: "Failed to leave group"
                     )
                 }
-        }
-    }
-
-    fun selectGroup(group: Group) {
-        _selectedGroup.value = group
-        
-        // Check if group should be destroyed
-        viewModelScope.launch {
-            selfDestructService.checkGroup(group.id)
         }
     }
 
