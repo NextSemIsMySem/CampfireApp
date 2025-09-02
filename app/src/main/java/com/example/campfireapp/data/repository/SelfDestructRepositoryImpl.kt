@@ -120,7 +120,8 @@ class SelfDestructRepositoryImpl @Inject constructor(
 @Singleton
 class SelfDestructServiceImpl @Inject constructor(
     private val selfDestructRepository: SelfDestructRepository,
-    private val groupRepository: GroupRepository
+    private val groupRepository: GroupRepository,
+    private val messageRepository: MessageRepository // <-- INJECTED
 ) : SelfDestructService {
 
     override suspend fun checkAllGroups() {
@@ -130,17 +131,8 @@ class SelfDestructServiceImpl @Inject constructor(
     override suspend fun checkGroup(groupId: String) {
         val group = groupRepository.getGroup(groupId) ?: return
         
-        // Get current message count
-        val messageCount = try {
-            val firestore = FirebaseFirestore.getInstance()
-            val snapshot = firestore.collection("messages")
-                .whereEqualTo("groupId", groupId)
-                .get()
-                .await()
-            snapshot.size()
-        } catch (e: Exception) {
-            0
-        }
+        // Get message count efficiently from the repository
+        val messageCount = messageRepository.getMessageCount(groupId)
         
         if (selfDestructRepository.shouldDestroyGroup(group, messageCount)) {
             groupRepository.deleteGroup(groupId)
