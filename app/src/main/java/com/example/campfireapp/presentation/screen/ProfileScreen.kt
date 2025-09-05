@@ -41,11 +41,11 @@ fun ProfileScreen(
     }
     
     // Handle logout after account deletion
-    LaunchedEffect(uiState.isAuthenticated) {
-        if (!uiState.isAuthenticated) {
-            onLogout()
-        }
-    }
+    // LaunchedEffect(uiState.isAuthenticated) {
+    //     if (!uiState.isAuthenticated) {
+    //         onLogout()
+    //     }
+    // }
     
     currentUser?.let { user ->
         Scaffold(
