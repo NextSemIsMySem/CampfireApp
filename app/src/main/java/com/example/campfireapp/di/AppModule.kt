@@ -9,9 +9,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * Dagger Hilt module for providing Firebase and Repository dependencies
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -53,6 +50,11 @@ object AppModule {
     @Singleton
     fun provideSelfDestructService(
         selfDestructRepository: SelfDestructRepository,
-        groupRepository: GroupRepository
-    ): SelfDestructService = SelfDestructServiceImpl(selfDestructRepository, groupRepository)
+        groupRepository: GroupRepository,
+        messageRepository: MessageRepository // <-- ADDED DEPENDENCY
+    ): SelfDestructService = SelfDestructServiceImpl(
+        selfDestructRepository,
+        groupRepository,
+        messageRepository // <-- PASS DEPENDENCY
+    )
 }
